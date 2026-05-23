@@ -1,39 +1,28 @@
-import numpy as np
 from sentence_transformers import SentenceTransformer
+import faiss
+import numpy as np
+
+model = None
+
+def get_model():
+    global model
+
+    if model is None:
+        model = SentenceTransformer(
+            "sentence-transformers/all-MiniLM-L6-v2"
+        )
+
+    return model
 
 
-model = SentenceTransformer(
-    "sentence-transformers/all-MiniLM-L6-v2"
-)
+def retrieve(query, index, documents, top_k=3):
+    query_embedding = get_model().encode([query])
 
-
-def retrieve_chunks(
-    query,
-    index,
-    chunks,
-    top_k=5,
-    similarity_threshold=1.5
-):
-
-    query_embedding = model.encode([query])
-
-    distances, indices = index.search(
+    D, I = index.search(
         np.array(query_embedding).astype("float32"),
         top_k
     )
 
-    retrieved_chunks = []
+    retrieved_docs = [documents[i] for i in I[0]]
 
-    for i, idx in enumerate(indices[0]):
-
-        if idx == -1:
-            continue
-
-        distance = distances[0][i]
-
-        # lower distance = better similarity
-        if distance < similarity_threshold:
-
-            retrieved_chunks.append(chunks[idx])
-
-    return retrieved_chunks
+    return retrieved_docs
