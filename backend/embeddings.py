@@ -1,19 +1,28 @@
-from sentence_transformers import SentenceTransformer
+from openai import OpenAI
+import os
+from dotenv import load_dotenv
 
-model = None
+load_dotenv()
+
+client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=os.getenv("OPENROUTER_API_KEY")
+)
 
 
-def get_embedding_model():
-    global model
+def create_embeddings(texts):
 
-    if model is None:
-        model = SentenceTransformer(
-            "sentence-transformers/all-MiniLM-L6-v2"
+    embeddings = []
+
+    for text in texts:
+
+        response = client.embeddings.create(
+            model="text-embedding-3-small",
+            input=text
         )
 
-    return model
+        embedding = response.data[0].embedding
 
+        embeddings.append(embedding)
 
-def generate_embeddings(texts):
-    model = get_embedding_model()
-    return model.encode(texts)
+    return embeddings

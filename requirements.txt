@@ -1,15 +1,10 @@
 fastapi
 uvicorn
-streamlit
 requests
 numpy<2
-sentence-transformers
 faiss-cpu
 pypdf
 python-multipart
-langchain
-langchain-community
-langchain-text-splitters
 python-dotenv
 openai
-torch --index-url https://download.pytorch.org/whl/cpu
+langchain-text-splitters

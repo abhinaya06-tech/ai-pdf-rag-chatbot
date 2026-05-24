@@ -1,25 +1,27 @@
-from sentence_transformers import SentenceTransformer
-import faiss
+from openai import OpenAI
 import numpy as np
+import os
+from dotenv import load_dotenv
 
-model = None
+load_dotenv()
 
-def get_model():
-    global model
-
-    if model is None:
-        model = SentenceTransformer(
-            "sentence-transformers/all-MiniLM-L6-v2"
-        )
-
-    return model
+client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=os.getenv("OPENROUTER_API_KEY")
+)
 
 
-def retrieve(query, index, documents, top_k=3):
-    query_embedding = get_model().encode([query])
+def retrieve_chunks(query, index, documents, top_k=3):
+
+    response = client.embeddings.create(
+        model="text-embedding-3-small",
+        input=query
+    )
+
+    query_embedding = response.data[0].embedding
 
     D, I = index.search(
-        np.array(query_embedding).astype("float32"),
+        np.array([query_embedding]).astype("float32"),
         top_k
     )
 
