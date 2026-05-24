@@ -15,65 +15,67 @@ st.set_page_config(
 # -----------------------------
 # SESSION STATE
 # -----------------------------
-if "uploaded" not in st.session_state:
-    st.session_state.uploaded = False
+if "uploaded_files" not in st.session_state:
+    st.session_state.uploaded_files = []
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
-
-if "uploaded_files" not in st.session_state:
-    st.session_state.uploaded_files = []
 
 # -----------------------------
 # SIDEBAR
 # -----------------------------
 with st.sidebar:
+
     st.title("Upload PDFs")
 
     uploaded_files = st.file_uploader(
         "Choose PDFs",
-        type="pdf",
+        type=["pdf"],
         accept_multiple_files=True
     )
 
-    # Upload PDFs only once
-    if uploaded_files and not st.session_state.uploaded:
+    if uploaded_files:
 
-        with st.spinner("Uploading and processing PDFs..."):
+        if st.button("Process PDFs"):
 
-            try:
-                files = [
-                    (
-                        "files",
-                        (
-                            file.name,
-                            file.getvalue(),
-                            "application/pdf"
+            with st.spinner("Uploading and processing PDFs..."):
+
+                success = True
+
+                for pdf in uploaded_files:
+
+                    try:
+                        files = {
+                            "file": (
+                                pdf.name,
+                                pdf.getvalue(),
+                                "application/pdf"
+                            )
+                        }
+
+                        response = requests.post(
+                            f"{BACKEND_URL}/upload-pdf",
+                            files=files,
+                            timeout=300
                         )
-                    )
-                    for file in uploaded_files
-                ]
 
-                response = requests.post(
-                    f"{BACKEND_URL}/upload-pdf",
-                    files=files,
-                    timeout=300
-                )
+                        if response.status_code == 200:
 
-                if response.status_code == 200:
+                            if pdf.name not in st.session_state.uploaded_files:
+                                st.session_state.uploaded_files.append(pdf.name)
+
+                        else:
+                            success = False
+                            st.error(
+                                f"Upload failed for {pdf.name}: {response.text}"
+                            )
+
+                    except Exception as e:
+                        success = False
+                        st.error(f"Error uploading {pdf.name}: {str(e)}")
+
+                if success:
                     st.success("PDFs uploaded successfully!")
-
-                    st.session_state.uploaded = True
-
-                    st.session_state.uploaded_files = [
-                        file.name for file in uploaded_files
-                    ]
-
-                else:
-                    st.error(f"Upload failed: {response.text}")
-
-            except Exception as e:
-                st.error(f"Error: {str(e)}")
 
     st.subheader("Uploaded Documents")
 
@@ -81,9 +83,10 @@ with st.sidebar:
         st.write(f"📄 {file_name}")
 
     if st.button("Reset PDFs"):
-        st.session_state.uploaded = False
+
         st.session_state.uploaded_files = []
         st.session_state.messages = []
+
         st.rerun()
 
 # -----------------------------
@@ -91,7 +94,9 @@ with st.sidebar:
 # -----------------------------
 st.title("📄 AI PDF Chatbot")
 
-# Display chat messages
+# -----------------------------
+# CHAT HISTORY
+# -----------------------------
 for role, message in st.session_state.messages:
 
     with st.chat_message(role):
@@ -104,13 +109,11 @@ question = st.chat_input("Ask a question about your PDFs")
 
 if question:
 
-    # Show user message
     st.session_state.messages.append(("user", question))
 
     with st.chat_message("user"):
         st.markdown(question)
 
-    # Get AI response
     with st.chat_message("assistant"):
 
         with st.spinner("Thinking..."):
@@ -138,6 +141,7 @@ if question:
                     )
 
                 else:
+
                     error_msg = f"Error: {response.text}"
 
                     st.error(error_msg)
