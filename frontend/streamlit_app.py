@@ -2,7 +2,8 @@ import streamlit as st
 import requests
 
 
-BACKEND_URL = "http://127.0.0.1:8000"
+# RENDER BACKEND URL
+BACKEND_URL = "https://ai-pdf-rag-backend.onrender.com"
 
 
 st.set_page_config(
@@ -41,19 +42,35 @@ with st.sidebar:
             if uploaded_file.name not in st.session_state.uploaded_files:
 
                 files = {
-                    "file": uploaded_file
+                    "file": (
+                        uploaded_file.name,
+                        uploaded_file,
+                        "application/pdf"
+                    )
                 }
 
-                response = requests.post(
-                    f"{BACKEND_URL}/upload-pdf",
-                    files=files
-                )
+                try:
 
-                if response.status_code == 200:
-
-                    st.session_state.uploaded_files.append(
-                        uploaded_file.name
+                    response = requests.post(
+                        f"{BACKEND_URL}/upload-pdf",
+                        files=files
                     )
+
+                    if response.status_code == 200:
+
+                        st.session_state.uploaded_files.append(
+                            uploaded_file.name
+                        )
+
+                    else:
+
+                        st.error(
+                            f"Upload failed: {response.text}"
+                        )
+
+                except Exception as e:
+
+                    st.error(f"Error: {e}")
 
         st.success("PDFs uploaded successfully!")
 
@@ -101,19 +118,31 @@ if question:
         "question": question
     }
 
-    response = requests.post(
-        f"{BACKEND_URL}/ask",
-        json=payload
-    )
+    try:
 
-    data = response.json()
+        response = requests.post(
+            f"{BACKEND_URL}/ask",
+            json=payload
+        )
 
-    st.session_state.chat_history.append(
-        {
-            "question": question,
-            "answer": data["answer"],
-            "chunks": data["retrieved_chunks"]
-        }
-    )
+        data = response.json()
 
-    st.rerun()
+        st.session_state.chat_history.append(
+            {
+                "question": question,
+                "answer": data.get(
+                    "answer",
+                    "No answer returned."
+                ),
+                "chunks": data.get(
+                    "retrieved_chunks",
+                    []
+                )
+            }
+        )
+
+        st.rerun()
+
+    except Exception as e:
+
+        st.error(f"Error: {e}")
