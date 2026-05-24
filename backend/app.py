@@ -7,19 +7,18 @@ from pdf_loader import load_pdf
 from chunking import chunk_text
 from embeddings import create_embeddings
 from vector_store import create_faiss_index
-from retriever import retrieve
+from retriever import retrieve_chunks
 from llm import generate_response
 
 
 app = FastAPI()
 
 
-# CREATE DATA FOLDER IF NOT EXISTS
+# CREATE DATA FOLDER
 os.makedirs("data", exist_ok=True)
 
 
 # GLOBAL VARIABLES
-
 all_chunks = []
 index = None
 
@@ -42,7 +41,7 @@ async def upload_pdf(file: UploadFile = File(...)):
     global all_chunks
     global index
 
-    # SAVE PDF INSIDE data FOLDER
+    # SAVE FILE
     file_path = f"data/{file.filename}"
 
     with open(file_path, "wb") as buffer:
@@ -54,12 +53,13 @@ async def upload_pdf(file: UploadFile = File(...)):
     # CHUNK TEXT
     new_chunks = chunk_text(text)
 
+    # STORE CHUNKS
     all_chunks.extend(new_chunks)
 
     # CREATE EMBEDDINGS
     embeddings = create_embeddings(all_chunks)
 
-    # CREATE VECTOR INDEX
+    # CREATE FAISS INDEX
     index = create_faiss_index(embeddings)
 
     return {
@@ -81,13 +81,13 @@ def ask_question(request: QueryRequest):
         }
 
     # RETRIEVE RELEVANT CHUNKS
-    retrieved_chunks = retrieve(
+    retrieved_chunks = retrieve_chunks(
         request.question,
         index,
         all_chunks
     )
 
-    # GENERATE ANSWER
+    # GENERATE RESPONSE
     response = generate_response(
         request.question,
         retrieved_chunks

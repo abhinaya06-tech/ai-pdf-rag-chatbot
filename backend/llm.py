@@ -12,27 +12,31 @@ client = OpenAI(
 )
 
 
-def generate_response(query, retrieved_chunks):
+def generate_response(
+    query,
+    retrieved_chunks
+):
 
     context = "\n\n".join(retrieved_chunks)
 
     prompt = f"""
-    You are an AI PDF assistant.
+You are an AI PDF assistant.
 
-    Answer ONLY from the provided context.
+Answer ONLY from the provided context.
 
-    If answer is not found, say:
-    "I could not find the answer in the document."
+If answer is not found, say:
+"I could not find the answer in the document."
 
-    Context:
-    {context}
+Context:
+{context}
 
-    Question:
-    {query}
-    """
+Question:
+{query}
+"""
 
     response = client.chat.completions.create(
-model="nvidia/nemotron-3-super-120b-a12b:free",        messages=[
+        model="nvidia/nemotron-3-super-120b-a12b:free",
+        messages=[
             {
                 "role": "user",
                 "content": prompt
