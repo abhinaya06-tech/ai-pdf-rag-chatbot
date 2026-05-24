@@ -60,6 +60,18 @@ https://ai-pdf-rag-chatbot-ixdc2kzlyrkqttezqwx48e.streamlit.app
 https://ai-pdf-rag-backend.onrender.com
 
 ---
+## Screenshots
+
+### Home Screen
+![Home](assets/home.png)
+
+### PDF Uploaded
+![Upload](assets/upload.png)
+
+### Chat Response
+![Chat](assets/chat.png)
+
+---
 
 ## Installation
 
