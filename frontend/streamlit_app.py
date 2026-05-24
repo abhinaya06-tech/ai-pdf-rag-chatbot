@@ -1,10 +1,10 @@
 import streamlit as st
 import requests
 
-
-# RENDER BACKEND URL
+# -----------------------------
+# CONFIG
+# -----------------------------
 BACKEND_URL = "https://ai-pdf-rag-backend.onrender.com"
-
 
 st.set_page_config(
     page_title="AI PDF Chatbot",
@@ -12,21 +12,23 @@ st.set_page_config(
     layout="wide"
 )
 
-
+# -----------------------------
 # SESSION STATE
+# -----------------------------
+if "uploaded" not in st.session_state:
+    st.session_state.uploaded = False
 
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
 if "uploaded_files" not in st.session_state:
     st.session_state.uploaded_files = []
 
-
+# -----------------------------
 # SIDEBAR
-
+# -----------------------------
 with st.sidebar:
-
-    st.header("Upload PDFs")
+    st.title("Upload PDFs")
 
     uploaded_files = st.file_uploader(
         "Choose PDFs",
@@ -34,115 +36,122 @@ with st.sidebar:
         accept_multiple_files=True
     )
 
-    if uploaded_files:
+    # Upload PDFs only once
+    if uploaded_files and not st.session_state.uploaded:
 
-        for uploaded_file in uploaded_files:
+        with st.spinner("Uploading and processing PDFs..."):
 
-            # Avoid duplicate uploads
-            if uploaded_file.name not in st.session_state.uploaded_files:
-
-                files = {
-                    "file": (
-                        uploaded_file.name,
-                        uploaded_file,
-                        "application/pdf"
-                    )
-                }
-
-                try:
-
-                    response = requests.post(
-                        f"{BACKEND_URL}/upload-pdf",
-                        files=files
-                    )
-
-                    if response.status_code == 200:
-
-                        st.session_state.uploaded_files.append(
-                            uploaded_file.name
+            try:
+                files = [
+                    (
+                        "files",
+                        (
+                            file.name,
+                            file.getvalue(),
+                            "application/pdf"
                         )
+                    )
+                    for file in uploaded_files
+                ]
 
-                    else:
+                response = requests.post(
+                    f"{BACKEND_URL}/upload-pdf",
+                    files=files,
+                    timeout=300
+                )
 
-                        st.error(
-                            f"Upload failed: {response.text}"
-                        )
+                if response.status_code == 200:
+                    st.success("PDFs uploaded successfully!")
 
-                except Exception as e:
+                    st.session_state.uploaded = True
 
-                    st.error(f"Error: {e}")
+                    st.session_state.uploaded_files = [
+                        file.name for file in uploaded_files
+                    ]
 
-        st.success("PDFs uploaded successfully!")
+                else:
+                    st.error(f"Upload failed: {response.text}")
 
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
 
     st.subheader("Uploaded Documents")
 
     for file_name in st.session_state.uploaded_files:
-
         st.write(f"📄 {file_name}")
 
+    if st.button("Reset PDFs"):
+        st.session_state.uploaded = False
+        st.session_state.uploaded_files = []
+        st.session_state.messages = []
+        st.rerun()
 
+# -----------------------------
 # MAIN UI
-
+# -----------------------------
 st.title("📄 AI PDF Chatbot")
 
+# Display chat messages
+for role, message in st.session_state.messages:
 
-# CHAT HISTORY
+    with st.chat_message(role):
+        st.markdown(message)
 
-for chat in st.session_state.chat_history:
-
-    with st.chat_message("user"):
-        st.write(chat["question"])
-
-    with st.chat_message("assistant"):
-        st.write(chat["answer"])
-
-        with st.expander("Retrieved Context"):
-
-            for i, chunk in enumerate(chat["chunks"]):
-
-                st.markdown(f"### Chunk {i+1}")
-                st.write(chunk)
-
-
+# -----------------------------
 # CHAT INPUT
-
-question = st.chat_input(
-    "Ask a question about your PDFs"
-)
-
+# -----------------------------
+question = st.chat_input("Ask a question about your PDFs")
 
 if question:
 
-    payload = {
-        "question": question
-    }
+    # Show user message
+    st.session_state.messages.append(("user", question))
 
-    try:
+    with st.chat_message("user"):
+        st.markdown(question)
 
-        response = requests.post(
-            f"{BACKEND_URL}/ask",
-            json=payload
-        )
+    # Get AI response
+    with st.chat_message("assistant"):
 
-        data = response.json()
+        with st.spinner("Thinking..."):
 
-        st.session_state.chat_history.append(
-            {
-                "question": question,
-                "answer": data.get(
-                    "answer",
-                    "No answer returned."
-                ),
-                "chunks": data.get(
-                    "retrieved_chunks",
-                    []
+            try:
+                response = requests.post(
+                    f"{BACKEND_URL}/ask",
+                    json={"question": question},
+                    timeout=300
                 )
-            }
-        )
 
-        st.rerun()
+                if response.status_code == 200:
 
-    except Exception as e:
+                    data = response.json()
 
-        st.error(f"Error: {e}")
+                    answer = data.get(
+                        "answer",
+                        "No answer returned."
+                    )
+
+                    st.markdown(answer)
+
+                    st.session_state.messages.append(
+                        ("assistant", answer)
+                    )
+
+                else:
+                    error_msg = f"Error: {response.text}"
+
+                    st.error(error_msg)
+
+                    st.session_state.messages.append(
+                        ("assistant", error_msg)
+                    )
+
+            except Exception as e:
+
+                error_msg = f"Error: {str(e)}"
+
+                st.error(error_msg)
+
+                st.session_state.messages.append(
+                    ("assistant", error_msg)
+                )
