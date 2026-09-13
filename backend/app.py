@@ -29,7 +29,6 @@ class QueryRequest(BaseModel):
 
 @app.get("/")
 def home():
-
     return {
         "message": "AI PDF Chatbot Backend Running"
     }
@@ -47,17 +46,18 @@ async def upload_pdf(file: UploadFile = File(...)):
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    # LOAD PDF TEXT
-    text = load_pdf(file_path)
+    # LOAD PDF PAGES
+    pages = load_pdf(file_path)
 
-    # CHUNK TEXT
-    new_chunks = chunk_text(text)
+    # CHUNK TEXT WHILE PRESERVING PAGE METADATA
+    new_chunks = chunk_text(pages)
 
     # STORE CHUNKS
     all_chunks.extend(new_chunks)
 
-    # CREATE EMBEDDINGS
-    embeddings = create_embeddings(all_chunks)
+    # CREATE EMBEDDINGS FROM CHUNK TEXT
+    texts = [chunk["text"] for chunk in all_chunks]
+    embeddings = create_embeddings(texts)
 
     # CREATE FAISS INDEX
     index = create_faiss_index(embeddings)
@@ -75,7 +75,6 @@ def ask_question(request: QueryRequest):
     global index
 
     if len(all_chunks) == 0 or index is None:
-
         return {
             "error": "Please upload a PDF first."
         }
