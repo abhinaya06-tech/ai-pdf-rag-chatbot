@@ -1,5 +1,6 @@
 from openai import OpenAI
 import os
+import numpy as np
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -11,18 +12,31 @@ client = OpenAI(
 
 
 def create_embeddings(texts):
+    response = client.embeddings.create(
+        model="text-embedding-3-small",
+        input=texts
+    )
 
-    embeddings = []
+    embeddings = [
+        item.embedding
+        for item in response.data
+    ]
 
-    for text in texts:
+    embeddings = np.array(
+        embeddings,
+        dtype="float32"
+    )
 
-        response = client.embeddings.create(
-            model="text-embedding-3-small",
-            input=text
-        )
+    # Normalize embeddings for cosine similarity
+    norms = np.linalg.norm(
+        embeddings,
+        axis=1,
+        keepdims=True
+    )
 
-        embedding = response.data[0].embedding
+    embeddings = embeddings / np.maximum(
+        norms,
+        1e-12
+    )
 
-        embeddings.append(embedding)
-
-    return embeddings
+    return embeddings.tolist()

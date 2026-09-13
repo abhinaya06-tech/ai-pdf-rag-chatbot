@@ -3,14 +3,15 @@ import numpy as np
 
 
 def create_faiss_index(embeddings):
-
     embeddings = np.array(
-        embeddings
-    ).astype("float32")
+        embeddings,
+        dtype="float32"
+    )
 
     dimension = embeddings.shape[1]
 
-    index = faiss.IndexFlatL2(dimension)
+    # Inner product on normalized vectors = cosine similarity
+    index = faiss.IndexFlatIP(dimension)
 
     index.add(embeddings)
 

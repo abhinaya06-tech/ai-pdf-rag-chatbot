@@ -3,9 +3,7 @@ from dotenv import load_dotenv
 import numpy as np
 import os
 
-
 load_dotenv()
-
 
 client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
@@ -19,35 +17,37 @@ def retrieve_chunks(
     documents,
     top_k=3
 ):
-
-    # CREATE QUERY EMBEDDING
     response = client.embeddings.create(
         model="text-embedding-3-small",
         input=query
     )
 
-    query_embedding = response.data[0].embedding
+    query_embedding = np.array(
+        response.data[0].embedding,
+        dtype="float32"
+    )
 
-    # DON'T REQUEST MORE RESULTS THAN AVAILABLE DOCUMENTS
+    # Normalize query embedding for cosine similarity
+    query_embedding = query_embedding / max(
+        np.linalg.norm(query_embedding),
+        1e-12
+    )
+
     k = min(top_k, len(documents))
 
-    # SEARCH FAISS INDEX
-    distances, indices = index.search(
-        np.array([query_embedding]).astype("float32"),
+    similarities, indices = index.search(
+        np.array([query_embedding]),
         k
     )
 
     retrieved_docs = []
 
-    for distance, i in zip(distances[0], indices[0]):
-
+    for similarity, i in zip(similarities[0], indices[0]):
         if i < 0:
             continue
 
         document = documents[i].copy()
-
-        document["distance"] = float(distance)
-
+        document["similarity"] = float(similarity)
         retrieved_docs.append(document)
 
     return retrieved_docs
