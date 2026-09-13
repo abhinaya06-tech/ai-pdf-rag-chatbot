@@ -4,12 +4,15 @@ from pypdf import PdfReader
 def load_pdf(file_path):
     reader = PdfReader(file_path)
 
-    text = ""
+    pages = []
 
-    for page in reader.pages:
-        extracted_text = page.extract_text()
+    for page_number, page in enumerate(reader.pages, start=1):
+        text = page.extract_text()
 
-        if extracted_text:
-            text += extracted_text
+        if text:
+            pages.append({
+                "text": text,
+                "page": page_number
+            })
 
-    return text
+    return pages
