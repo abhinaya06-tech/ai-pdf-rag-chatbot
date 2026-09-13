@@ -20,6 +20,7 @@ def retrieve_chunks(
     top_k=3
 ):
 
+    # CREATE QUERY EMBEDDING
     response = client.embeddings.create(
         model="text-embedding-3-small",
         input=query
@@ -27,14 +28,26 @@ def retrieve_chunks(
 
     query_embedding = response.data[0].embedding
 
-    D, I = index.search(
+    # DON'T REQUEST MORE RESULTS THAN AVAILABLE DOCUMENTS
+    k = min(top_k, len(documents))
+
+    # SEARCH FAISS INDEX
+    distances, indices = index.search(
         np.array([query_embedding]).astype("float32"),
-        top_k
+        k
     )
 
-    retrieved_docs = [
-        documents[i]
-        for i in I[0]
-    ]
+    retrieved_docs = []
+
+    for distance, i in zip(distances[0], indices[0]):
+
+        if i < 0:
+            continue
+
+        document = documents[i].copy()
+
+        document["distance"] = float(distance)
+
+        retrieved_docs.append(document)
 
     return retrieved_docs
