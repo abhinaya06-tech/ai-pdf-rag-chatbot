@@ -1,10 +1,14 @@
 import streamlit as st
 import requests
+import os
 
 # -----------------------------
 # CONFIG
 # -----------------------------
-BACKEND_URL = "https://ai-pdf-rag-backend.onrender.com"
+BACKEND_URL = os.getenv(
+    "BACKEND_URL",
+    "http://127.0.0.1:8000"
+)
 
 st.set_page_config(
     page_title="AI PDF Chatbot",
@@ -72,7 +76,9 @@ with st.sidebar:
 
                     except Exception as e:
                         success = False
-                        st.error(f"Error uploading {pdf.name}: {str(e)}")
+                        st.error(
+                            f"Error uploading {pdf.name}: {str(e)}"
+                        )
 
                 if success:
                     st.success("PDFs uploaded successfully!")
@@ -97,10 +103,21 @@ st.title("📄 AI PDF Chatbot")
 # -----------------------------
 # CHAT HISTORY
 # -----------------------------
-for role, message in st.session_state.messages:
+for message in st.session_state.messages:
+
+    role = message["role"]
+    content = message["content"]
+    source_pages = message.get("source_pages", [])
 
     with st.chat_message(role):
-        st.markdown(message)
+        st.markdown(content)
+
+        if role == "assistant" and source_pages:
+            pages = ", ".join(
+                f"Page {page}"
+                for page in source_pages
+            )
+            st.caption(f"Sources: {pages}")
 
 # -----------------------------
 # CHAT INPUT
@@ -109,7 +126,10 @@ question = st.chat_input("Ask a question about your PDFs")
 
 if question:
 
-    st.session_state.messages.append(("user", question))
+    st.session_state.messages.append({
+        "role": "user",
+        "content": question
+    })
 
     with st.chat_message("user"):
         st.markdown(question)
@@ -119,6 +139,7 @@ if question:
         with st.spinner("Thinking..."):
 
             try:
+
                 response = requests.post(
                     f"{BACKEND_URL}/ask",
                     json={"question": question},
@@ -134,11 +155,25 @@ if question:
                         "No answer returned."
                     )
 
+                    source_pages = data.get(
+                        "source_pages",
+                        []
+                    )
+
                     st.markdown(answer)
 
-                    st.session_state.messages.append(
-                        ("assistant", answer)
-                    )
+                    if source_pages:
+                        pages = ", ".join(
+                            f"Page {page}"
+                            for page in source_pages
+                        )
+                        st.caption(f"Sources: {pages}")
+
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content": answer,
+                        "source_pages": source_pages
+                    })
 
                 else:
 
@@ -146,9 +181,11 @@ if question:
 
                     st.error(error_msg)
 
-                    st.session_state.messages.append(
-                        ("assistant", error_msg)
-                    )
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content": error_msg,
+                        "source_pages": []
+                    })
 
             except Exception as e:
 
@@ -156,6 +193,8 @@ if question:
 
                 st.error(error_msg)
 
-                st.session_state.messages.append(
-                    ("assistant", error_msg)
-                )
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": error_msg,
+                    "source_pages": []
+                })

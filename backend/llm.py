@@ -27,19 +27,15 @@ def generate_response(
     context = "\n\n".join(context_parts)
 
     prompt = f"""
-    You are an AI PDF assistant.
-    Answer ONLY from the provided context.
-    
-    If the answer is not found in the provided context, say exactly:
+You are an AI PDF assistant.
+
+Answer ONLY from the provided context.
+
+If the answer is not found in the provided context, say exactly:
 "I could not find the answer in the document."
 
 When answering:
 - Do not use information that is not supported by the context.
-- If you found an answer, add a "Sources" line listing the page numbers used.
-- If you could not find the answer, do NOT add a Sources line.
-- Use this exact format when sources are available:
-  Sources: Page 1, Page 3
-- Only include pages that are actually present in the provided context.
 
 Context:
 {context}
