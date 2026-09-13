@@ -17,15 +17,24 @@ def generate_response(
     retrieved_chunks
 ):
 
-    context = "\n\n".join(retrieved_chunks)
+    context_parts = []
+
+    for chunk in retrieved_chunks:
+        context_parts.append(
+            f"Page {chunk['page']}:\n{chunk['text']}"
+        )
+
+    context = "\n\n".join(context_parts)
 
     prompt = f"""
 You are an AI PDF assistant.
 
 Answer ONLY from the provided context.
 
-If answer is not found, say:
+If the answer is not found in the provided context, say:
 "I could not find the answer in the document."
+
+When answering, do not mention information that is not supported by the context.
 
 Context:
 {context}
