@@ -92,8 +92,20 @@ def ask_question(request: QueryRequest):
         retrieved_chunks
     )
 
+    # EXTRACT UNIQUE SOURCE PAGES
+    if response == "I could not find the answer in the document.":
+        source_pages = []
+    else:
+        source_pages = sorted(
+            set(
+                chunk["page"]
+                for chunk in retrieved_chunks
+            )
+        )
+
     return {
         "question": request.question,
         "answer": response,
+        "source_pages": source_pages,
         "retrieved_chunks": retrieved_chunks
     }
